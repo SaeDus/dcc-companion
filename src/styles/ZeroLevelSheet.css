@@ -1,0 +1,29 @@
+@import "./theme.css";
+@import "./App.css";
+
+.zero-level-sheet {
+  font-family: var(--text-font);
+}
+
+.custom-border {
+  background-color: var(--background-color);
+  border: 1px solid var(--border-color);
+}
+
+.vertical-text {
+  writing-mode: sideways-lr;
+  text-orientation: mixed;
+}
+
+.title-text {
+  color: var(--title-color);
+}
+
+.label-text {
+  color: var(--label-color);
+  font-style: italic;
+}
+
+input {
+  text-align: center;
+}
