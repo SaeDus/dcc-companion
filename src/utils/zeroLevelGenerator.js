@@ -38,6 +38,8 @@ function rollLuckyRoll(luck) {
 
   if (luckyRoll > 30) {
     luckyRoll -= 30;
+  } else if (luckyRoll <= 0) {
+    luckyRoll += 30;
   }
 
   return luckyRoll;

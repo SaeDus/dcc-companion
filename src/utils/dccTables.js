@@ -1,4 +1,12 @@
+import { invoke } from "@tauri-apps/api/core";
 import rollDie from "./dccDice.js";
+
+export async function initializeAllTables() {
+  await invoke("populate_table", {
+    table_name: "equipmentTable",
+    entries: equipmentTable,
+  });
+}
 
 function rollAmmo(weaponName) {
   let ammoType = "";
@@ -113,7 +121,6 @@ export const luckScore = {
   16: {
     birthAugur: "Survived the plague",
     luckyRoll: "Magical healing",
-    notes: [luckScoreHealingNote],
   },
   17: {
     birthAugur: "Lucky sign",
@@ -154,7 +161,6 @@ export const luckScore = {
   26: {
     birthAugur: "Warrior's arm",
     luckyRoll: "Critical hit tables",
-    notes: [luckScoreCritFumbleNote],
   },
   27: {
     birthAugur: "Unholy house",
@@ -163,7 +169,6 @@ export const luckScore = {
   28: {
     birthAugur: "The Broken Star",
     luckyRoll: "Fumbles",
-    notes: [luckScoreCritFumbleNote],
   },
   29: {
     birthAugur: "Birdsong",

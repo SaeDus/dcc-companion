@@ -1,8 +1,9 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import PropTypes from "prop-types";
+import { invoke } from "@tauri-apps/api/core";
+
 import "../styles/ZeroLevelSheet.css";
 
-import * as Tables from "../utils/dccTables.js";
 import { Character } from "../utils/character.js";
 import rollDie from "../utils/dccDice.js";
 
@@ -18,58 +19,99 @@ const abilityScores = [
 const savingThrows = ["REFLEX", "FORTITUDE", "WILLPOWER"];
 
 export default function ZeroLevelSheet({ character }) {
-  function getModifier(label) {
-    let score = character[label.toLowerCase()];
-    let mod = Tables.abilityScoreModifiers[score].modifier;
+  const [characterLabels, setCharacterLabels] = useState({});
 
-    return (mod >= 0 ? "+" : "") + mod.toString();
-  }
+  useEffect(() => {
+    const fetchLabels = async () => {
+      const labels = {};
+
+      labels.strength = await invoke("get_ability_modifier", {
+        id: character.strength,
+      });
+      labels.agility = await invoke("get_ability_modifier", {
+        id: character.agility,
+      });
+      labels.stamina = await invoke("get_ability_modifier", {
+        id: character.stamina,
+      });
+      labels.personality = await invoke("get_ability_modifier", {
+        id: character.personality,
+      });
+      labels.intelligence = await invoke("get_ability_modifier", {
+        id: character.intelligence,
+      });
+      labels.luck = await invoke("get_ability_modifier", {
+        id: character.luck,
+      });
+
+      labels.luckyRoll = await invoke("get_luck_score", {
+        id: character.luckyRoll,
+      });
+
+      labels.occupation = await invoke("get_occupation", {
+        id: character.occupation,
+      });
+
+      labels.equipment = await invoke("get_equipment", {
+        id: character.equipment,
+      });
+
+      labels.languages = await rollLanguages(
+        labels.intelligence.modifier,
+        labels.occupation.occupation,
+      );
+
+      setCharacterLabels(labels);
+    };
+
+    fetchLabels();
+  }, [character]);
 
   function getSavingThrow(label) {
-    let score = 0;
+    let mod = 0;
 
     switch (label) {
       case "REFLEX":
-        score = character.agility;
+        mod = characterLabels.agility ? characterLabels.agility.modifier : 0;
         break;
       case "FORTITUDE":
-        score = character.stamina;
+        mod = characterLabels.stamina ? characterLabels.stamina.modifier : 0;
         break;
       case "WILLPOWER":
-        score = character.personality;
+        mod = characterLabels.personality
+          ? characterLabels.personality.modifier
+          : 0;
         break;
       default:
-        alert("umm....");
+        alert("umm...");
     }
 
-    let mod = Tables.abilityScoreModifiers[score].modifier;
-
-    return (mod >= 0 ? "+" : "") + mod.toString();
+    return mod >= 0 ? `+${mod}` : mod;
   }
 
   function getArmorClass() {
-    let mod = Tables.abilityScoreModifiers[character.agility].modifier;
+    let mod = characterLabels.agility ? characterLabels.agility.modifier : 0;
 
     return 10 + mod;
   }
 
-  function rollLanguages() {
+  async function rollLanguages(intelligence, occupation) {
     let knownLanguages = ["Common"];
-    let mod = Tables.abilityScoreModifiers[character.intelligence].modifier;
 
-    let occupationTitle =
-      Tables.occupationTable[character.occupation].occupation;
-
-    if (occupationTitle.toLowerCase().includes("dwarven")) {
-      knownLanguages.push("Dwarf");
-    } else if (occupationTitle.toLowerCase().includes("elven")) {
-      knownLanguages.push("Elf");
-    } else if (occupationTitle.toLowerCase().includes("halfling")) {
-      knownLanguages.push("Halfling");
+    if (typeof occupation === "string") {
+      if (occupation.toLowerCase().includes("dwarven")) {
+        knownLanguages.push("Dwarf");
+      } else if (occupation.toLowerCase().includes("elven")) {
+        knownLanguages.push("Elf");
+      } else if (occupation.toLowerCase().includes("halfling")) {
+        knownLanguages.push("Halfling");
+      }
     }
 
-    for (var i = 0; i < mod; i++) {
-      var language = Tables.getLanguageForZeroLevel(rollDie(1, 100));
+    for (var i = 0; i < intelligence; i++) {
+      var language = await invoke("get_zero_level_language", {
+        id: rollDie(1, 100),
+      });
 
       if (knownLanguages.includes(language)) {
         i--;
@@ -176,7 +218,9 @@ export default function ZeroLevelSheet({ character }) {
             `}
           >
             <p className="text-xl ml-3">
-              {Tables.occupationTable[character.occupation].trainedWeapon}
+              {characterLabels.occupation
+                ? characterLabels.occupation.trained_weapon
+                : ""}
             </p>
           </div>
           <div
@@ -293,7 +337,10 @@ export default function ZeroLevelSheet({ character }) {
             custom-border rounded-md
           `}
         >
-          <p className="text-lg">{rollLanguages()}</p>
+          {/* <p className="text-lg">{rollLanguages()}</p> */}
+          <p className="text-lg">
+            {characterLabels.languages ? characterLabels.languages : ""}
+          </p>
         </div>
       </div>
 
@@ -312,10 +359,12 @@ export default function ZeroLevelSheet({ character }) {
           `}
         >
           <p className="text-lg">
-            {Tables.occupationTable[character.occupation].tradeGoods}
+            {characterLabels.occupation
+              ? characterLabels.occupation.trade_goods
+              : ""}
           </p>
           <p className="text-lg">
-            {Tables.equipmentTable[character.equipment]}
+            {characterLabels.equipment ? characterLabels.equipment : ""}
           </p>
         </div>
       </div>
@@ -339,7 +388,9 @@ export default function ZeroLevelSheet({ character }) {
             `}
           >
             <p className="text-xl">
-              {Tables.occupationTable[character.occupation].trainedWeapon}
+              {characterLabels.occupation
+                ? characterLabels.occupation.trained_weapon
+                : ""}
             </p>
           </div>
           <p className="text-sm ml-4 label-text">Weapons</p>
@@ -379,7 +430,13 @@ export default function ZeroLevelSheet({ character }) {
               custom-border rounded-4xl
             `}
           >
-            <p className="text-2xl">{getModifier("agility")}</p>
+            <p className="text-2xl">
+              {characterLabels.agility
+                ? characterLabels.agility.modifier >= 0
+                  ? `+${characterLabels.agility.modifier}`
+                  : characterLabels.agility.modifier
+                : ""}
+            </p>
           </div>
           <p className="text-sm label-text">Initiative</p>
         </div>
@@ -519,7 +576,9 @@ export default function ZeroLevelSheet({ character }) {
           `}
         >
           <p className="text-xl">
-            {Tables.luckScore[character.luckyRoll].birthAugur}
+            {characterLabels.luckyRoll
+              ? characterLabels.luckyRoll.birth_augur
+              : ""}
           </p>
         </div>
         <div
@@ -529,7 +588,9 @@ export default function ZeroLevelSheet({ character }) {
           `}
         >
           <p className="text-xl">
-            {Tables.luckScore[character.luckyRoll].luckyRoll}
+            {characterLabels.luckyRoll
+              ? characterLabels.luckyRoll.lucky_roll
+              : ""}
           </p>
         </div>
       </div>
@@ -590,7 +651,13 @@ export default function ZeroLevelSheet({ character }) {
                   rounded-lg
                   `}
                 >
-                  <p className="justify-center text-2xl">{getModifier(a)}</p>
+                  <p className="justify-center text-2xl">
+                    {characterLabels[a.toLowerCase()] !== undefined
+                      ? characterLabels[a.toLowerCase()].modifier >= 0
+                        ? `+${characterLabels[a.toLowerCase()].modifier}`
+                        : characterLabels[a.toLowerCase()].modifier
+                      : ""}
+                  </p>
                 </div>
                 <div
                   className={`
@@ -632,7 +699,9 @@ export default function ZeroLevelSheet({ character }) {
             `}
           >
             <p className="text-2xl ml-3">
-              {Tables.occupationTable[character.occupation].occupation}
+              {characterLabels.occupation
+                ? characterLabels.occupation.occupation
+                : ""}
             </p>
           </div>
           <p className="text-sm self-start label-text">Occupation</p>
